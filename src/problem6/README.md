@@ -80,14 +80,14 @@ sequenceDiagram
     V-->>B: Completion confirmed with receipt ID
     B->>A: POST /v1/score-updates with receipt ID
     A->>A: Authenticate, check CSRF, validate, rate limit
-    A->>D: BEGIN; lock board, user and receipt
+    A->>D: Begin transaction and lock board, user and receipt
     alt Receipt was already credited
         D-->>A: Original award result
         A->>D: End read transaction
         A-->>B: 200 replayed=true, no new award
     else Receipt is valid and unused
-        A->>D: Insert award; increment score; advance board version
-        A->>D: Store top ten and outbox event; COMMIT
+        A->>D: Insert award, increment score and advance board version
+        A->>D: Store top ten and outbox event, then COMMIT
         D-->>A: Commit successful
         A-->>B: 200 committed award result
         W->>D: Claim committed outbox event
