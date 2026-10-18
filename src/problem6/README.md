@@ -1,6 +1,6 @@
 # Problem 6: Live Scoreboard Module Specification
 
-**Deliverable:** a specification for the backend engineering team. 
+**Deliverable:** a specification for the backend engineering team. This document proposes a new module; it does not add scoreboard endpoints to the Problem 5 task API.
 
 ## Requirements
 
@@ -25,12 +25,7 @@
 | Correctness | Every verified action is credited at most once, including retries and concurrent requests |
 | Proposed service target | At 25 new awards/second and 1,000 concurrent viewers, commit-to-display latency p95 <= 1 second in healthy operation |
 
-The load and latency figures are proposed acceptance targets, not measured capacity. 
-The team must validate them before release. 
-Seasons, score decreases, account/profile editing, and moderation removal are future extensions. 
-Initial snapshots contain immutable public handles rather than email addresses or private profile data. 
-Existing awarded scores remain on the board if an account is later suspended; future awards and access are blocked. 
-
+The load and latency figures are proposed acceptance targets, not measured capacity. The team must validate them before release. Seasons, score decreases, account/profile editing, and moderation removal are future extensions. Initial snapshots contain immutable public handles rather than email addresses or private profile data. Existing awarded scores remain on the board if an account is later suspended; future awards and access are blocked. Product should confirm this policy.
 
 ## Trust boundary: prove the action was completed
 
@@ -103,9 +98,7 @@ sequenceDiagram
     end
 ```
 
-SSE suits this requirement because the live channel carries server-to-browser updates. 
-The score mutation remains a normal HTTP request. 
-SSE framing and automatic reconnection use the browser's [EventSource protocol](https://html.spec.whatwg.org/multipage/server-sent-events.html).
+SSE suits this requirement because the live channel carries server-to-browser updates. The score mutation remains a normal HTTP request. SSE framing and automatic reconnection use the browser's [EventSource protocol](https://html.spec.whatwg.org/multipage/server-sent-events.html).
 
 ## API contracts
 
@@ -193,32 +186,22 @@ data: {"version":"42","updatedAt":"2026-10-19T08:00:00.000Z","entries":[{"rank":
 
 ```
 
-Each event ends with a blank line. 
-Send `: heartbeat` followed by a blank line every 15 seconds. 
-Event IDs equal the included board version. 
-This stream conveys **current state**, so it need not replay every intermediate score change.
+Each event ends with a blank line. Send `: heartbeat` followed by a blank line every 15 seconds. Event IDs equal the included board version. This stream conveys **current state**, so it need not replay every intermediate score change.
 
 Connection and recovery algorithm:
 
 1. Register the connection with the API instance's fan-out dispatcher before reading the initial board snapshot. If the Redis subscription is unavailable, enter degraded polling mode immediately.
-
-   
 2. Buffer/coalesce arriving notifications while reading `board_state` from the primary. Send the highest-version snapshot among the initial read and buffered notifications, then activate live delivery. Serialize writes per connection so an older initial snapshot cannot overwrite a newer update.
-
 3. Keep only the latest pending snapshot per connection, flushing at most once every 250 ms. Send versions strictly greater than the last one sent on that connection. Disconnect clients with more than 64 KB of buffered output or ten seconds of blocked writes.
-5. On reconnect, accept `Last-Event-ID` as a nonnegative decimal string within `BIGINT` range. It is a hint, not an authorization credential or replay requirement. Always send the latest full snapshot first, even if it has the same version. Invalid or future IDs do not block resynchronization. The browser retains only snapshots newer than its displayed version, except that a first snapshot initializes an empty page.
-6. Every API instance with viewers reads `board_state` from the primary every five seconds with jitter and fans out any newer version. Use one shared read per instance, not one per viewer. This repairs missed Pub/Sub messages, including the case where the final notification was lost and no later event arrives.
-7. Mark the UI disconnected/stale on stream failure. Retry network disconnects and use `GET /v1/leaderboard` every five seconds as a temporary fallback. On authentication failure, refresh the session or request login instead of retrying indefinitely. Native `EventSource` does not expose HTTP error bodies; the client can check the authenticated snapshot endpoint to distinguish session failure.
+4. On reconnect, accept `Last-Event-ID` as a nonnegative decimal string within `BIGINT` range. It is a hint, not an authorization credential or replay requirement. Always send the latest full snapshot first, even if it has the same version. Invalid or future IDs do not block resynchronization. The browser retains only snapshots newer than its displayed version, except that a first snapshot initializes an empty page.
+5. Every API instance with viewers reads `board_state` from the primary every five seconds with jitter and fans out any newer version. Use one shared read per instance, not one per viewer. This repairs missed Pub/Sub messages, including the case where the final notification was lost and no later event arrives.
+6. Mark the UI disconnected/stale on stream failure. Retry network disconnects and use `GET /v1/leaderboard` every five seconds as a temporary fallback. On authentication failure, refresh the session or request login instead of retrying indefinitely. Native `EventSource` does not expose HTTP error bodies; the client can check the authenticated snapshot endpoint to distinguish session failure.
 
-Limit initial streams to three per user and ten per IP, enforced across instances. 
-Recheck session/account validity every 60 seconds and close at session expiry. On revocation, send `session.expired` where possible, then close; authorization failures on the next connection return `401`/`403` before streaming. 
-Remove listeners, timers, and connection counters on disconnect. The client must close its `EventSource` on logout.
+Limit initial streams to three per user and ten per IP, enforced across instances. Recheck session/account validity every 60 seconds and close at session expiry. On revocation, send `session.expired` where possible, then close; authorization failures on the next connection return `401`/`403` before streaming. Remove listeners, timers, and connection counters on disconnect. The client must close its `EventSource` on logout.
 
 ## Persistent data model
 
-Use PostgreSQL migrations. User IDs reference the existing account table. 
-All timestamps are `TIMESTAMPTZ` in UTC; use database time for receipt expiry. 
-`BIGINT` fields must be handled without conversion to JavaScript `number`.
+Use PostgreSQL migrations. User IDs reference the existing account table. All timestamps are `TIMESTAMPTZ` in UTC; use database time for receipt expiry. `BIGINT` fields must be handled without conversion to JavaScript `number`.
 
 | Table | Required fields and constraints |
 | --- | --- |
@@ -233,9 +216,7 @@ Index `user_scores(score DESC, user_id ASC)` for ranking. Index `score_awards(us
 
 The ranking query joins `user_scores` to immutable public user handles, filters `score > 0`, orders by `score DESC, user_id ASC`, and takes `LIMIT 10`. Assign ranks 1 through the number of returned rows. Store this ordered result as a JSON snapshot with decimal-string scores and version. No Redis sorted-set ranking is required in the initial implementation.
 
-Database privileges must separate responsibilities: the action verifier inserts receipts; 
-the Score API reads policies/receipts and writes scores, awards, board state, and outbox; the publisher claims/acknowledges outbox rows and publishes notifications. The Score API must not update reward policies or insert completion receipts. 
-Receipt revocation uses a restricted internal role and the same receipt-row lock as redemption.
+Database privileges must separate responsibilities: the action verifier inserts receipts; the Score API reads policies/receipts and writes scores, awards, board state, and outbox; the publisher claims/acknowledges outbox rows and publishes notifications. The Score API must not update reward policies or insert completion receipts. Receipt revocation uses a restricted internal role and the same receipt-row lock as redemption.
 
 ## Award transaction and concurrency
 
@@ -360,7 +341,6 @@ The singleton board lock deliberately favors simple, auditable ordering for an i
 For greater scale, partition by season/competition so each board has its own lock and version. If one board outgrows this approach, move ranking to an ordered asynchronous projector and explicitly revise consistency and acknowledgement semantics. Redis sorted sets can accelerate ranking, but preserve a durable award ledger and address large-integer precision and deterministic ties before adopting them.
 
 Other improvements: authenticated server-to-server automatic redemption for users who close the page before claiming; a product-approved offline/receipt-expiry policy; moderator tooling with immutable compensating ledger entries; risk scoring for automated abuse; and a durable event transport if consumers must receive every award rather than only the latest board state.
-
 
 Implementation order:
 
