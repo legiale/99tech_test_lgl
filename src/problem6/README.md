@@ -289,7 +289,6 @@ Apply authorization on every endpoint. Use TLS, a server-managed `Secure`, `Http
 
 Initial HTTP limits are 30 score-update requests per minute per user (burst 10) and 120 per minute per IP (burst 30), using a shared token bucket. Failed and duplicate submissions count. Tune against legitimate action frequency and shared-network behavior. If the distributed limiter is unavailable, reject new mutation requests with `503`; use conservative local limits for read connections. Trusted completion receipts remain necessary even with rate limiting.
 
-Audit each accepted award with user ID, receipt ID, issuer, policy version, delta, score after, board version, and request ID. Track rejected claims and unusual completion patterns. Keep credentials, session cookies, and CSRF tokens out of logs. A compromised trusted verifier can mint false completions; restrict its credentials and monitor issuance. Rate limiting does not solve this trust-boundary compromise.
 
 ## Failure behavior and operations
 
@@ -306,7 +305,11 @@ Audit each accepted award with user ID, receipt ID, issuer, policy version, delt
 
 Metrics: award acceptance/rejection counts, duplicate rate, HTTP latency, board-lock wait, transaction failures, oldest unpublished outbox age, publish retries, active streams, dropped slow clients, repair reads, and commit-to-broadcast/display latency. Alert initially if the oldest unpublished row exceeds five seconds for one minute, or if the proposed latency/error targets fail. Monitor lock contention before raising traffic limits.
 
-Provide API readiness checks for the database/schema and publisher health separately. Redis degradation should be reported without marking the score-write path unusable. During shutdown, stop accepting mutations, finish in-flight transactions, notify/close SSE clients, and stop workers without marking unsent rows published. Back up PostgreSQL and test restore procedures. After a restore, explicitly reset browser stream state (for example by changing a deployment/board epoch) if versions may have moved backward.
+Provide API readiness checks for the database/schema and publisher health separately. 
+Redis degradation should be reported without marking the score-write path unusable. 
+During shutdown, stop accepting mutations, finish in-flight transactions, notify/close SSE clients, and stop workers without marking unsent rows published. 
+Back up PostgreSQL and test restore procedures. 
+After a restore, explicitly reset browser stream state (for example by changing a deployment/board epoch) if versions may have moved backward.
 
 ## Acceptance tests for the implementation team
 
@@ -334,15 +337,7 @@ These are required future tests, not tests already executed in this repository. 
 | Attempt a score overflow | `422`; score, ledger, board, and outbox remain unchanged |
 | Sustained proposed load for 30 minutes | Meet agreed latency/error targets with no growing outbox backlog or memory leak |
 
-## Improvements and implementation order
-
-The singleton board lock deliberately favors simple, auditable ordering for an initial global board. It serializes all awards and is the first likely write-throughput bottleneck. Measure lock wait under the proposed load before release; do not assume that adding API instances raises this limit.
-
-For greater scale, partition by season/competition so each board has its own lock and version. If one board outgrows this approach, move ranking to an ordered asynchronous projector and explicitly revise consistency and acknowledgement semantics. Redis sorted sets can accelerate ranking, but preserve a durable award ledger and address large-integer precision and deterministic ties before adopting them.
-
-Other improvements: authenticated server-to-server automatic redemption for users who close the page before claiming; a product-approved offline/receipt-expiry policy; moderator tooling with immutable compensating ledger entries; risk scoring for automated abuse; and a durable event transport if consumers must receive every award rather than only the latest board state.
-
-Implementation order:
+## Implementation order:
 
 1. Agree on the completion-verifier integration, reward policies, identity/session service, expiry, and moderation behavior.
 2. Add migrations, restricted database roles, transactional award service, and concurrency/security tests.
