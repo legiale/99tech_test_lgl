@@ -1,0 +1,25 @@
+{
+  "name": "99tech-backend-code-challenge",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test src/problem4/tests/solution.test.ts src/problem5/tests/api.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test:problem4": "node --test src/problem4/tests/solution.test.ts",
+    "demo:problem4": "node src/problem4/example.ts",
+    "test:problem5": "node --test src/problem5/tests/api.test.ts",
+    "start:problem5": "node --env-file-if-exists=.env src/problem5/server.ts",
+    "dev:problem5": "node --env-file-if-exists=.env --watch src/problem5/server.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3"
+  }
+}

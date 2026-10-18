@@ -1,0 +1,38 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local secrets (keep a sanitized example if needed)
+.env
+.env.*
+!.env.example
+
+# Logs and test coverage
+*.log
+coverage/
+.coverage
+htmlcov/
+
+# Dependencies and generated artifacts
+node_modules/
+dist/
+build/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+target/
+bin/
+obj/
+
+# Local SQLite database, including WAL and shared-memory files
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
