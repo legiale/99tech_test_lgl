@@ -14,9 +14,13 @@ Connect the server to a simple database for persistence, and provide configurati
 
 ## Solution and assumptions
 
-The resource is a **task**. The server uses Express 5 and a local SQLite file through Node's built-in `node:sqlite` module. The database and schema are created automatically on first startup; no separate database server is needed.
+The server uses Express 5 and a local SQLite file through Node's built-in `node:sqlite` module. 
+The database and schema are created automatically on first startup; no separate database server is needed.
 
-The prompt leaves the resource schema, filters, and update semantics open. This solution assumes one shared task collection, uses `PATCH` for partial updates, and provides status and text filters plus pagination. No authentication or user ownership is implemented because they are outside the specified CRUD scope. The server listens on localhost by default.
+This solution assumes one shared task collection, uses `PATCH` for partial updates, 
+and provides status and text filters plus pagination. 
+No authentication or user ownership is implemented because they are outside the specified CRUD scope. 
+The server listens on localhost by default.
 
 ## Requirements and setup
 
@@ -42,7 +46,10 @@ cp .env.example .env
 | `PORT` | `3000` | Integer port from 1 to 65535 |
 | `DB_PATH` | `./data/problem5.sqlite` | SQLite file; relative paths resolve from the working directory |
 
-Scripts automatically load the root `.env` file if present. Existing environment variables take precedence. The database parent directory is created automatically and needs to be writable. Local `.env` and database files are excluded from Git.
+Scripts automatically load the root `.env` file if present. 
+Existing environment variables take precedence. 
+The database parent directory is created automatically and needs to be writable. 
+Local `.env` and database files are excluded from Git.
 
 ## Run
 
@@ -59,8 +66,8 @@ The default URL is `http://127.0.0.1:3000`.
 curl http://127.0.0.1:3000/health
 # {"status":"ok"}
 ```
+`npm run typecheck` performs static checking separately. 
 
-TypeScript runs directly on Node; no build step is needed. `npm run typecheck` performs static checking separately. Stop the server with Ctrl+C; shutdown stops accepting requests, drains active requests (up to ten seconds), and closes SQLite.
 
 ## Task representation
 
@@ -96,7 +103,6 @@ Unknown body fields, null values, and strings containing null characters are rej
 | `PATCH` | `/tasks/:id` | `200`, `{ "data": updatedTask }` |
 | `DELETE` | `/tasks/:id` | `204`, no body |
 
-`PATCH` requires at least one writable field. Omitted fields retain their current values; setting `description` to `""` clears it. Deletion is permanent. A missing task returns `404`, including repeated deletes. Malformed UUIDs return `400`.
 
 ### List filters and pagination
 
@@ -107,7 +113,10 @@ Unknown body fields, null values, and strings containing null characters are rej
 | `limit` | Integer from 1 to 100; default 20 |
 | `offset` | Nonnegative safe integer; default 0 |
 
-Filters combine with AND. Search is case-insensitive for ASCII characters using SQLite's built-in `lower()`; it does not provide full Unicode case folding. `%` and `_` are treated literally. Unknown or repeated query parameters return `400`.
+Filters combine with AND. 
+Search is case-insensitive for ASCII characters using SQLite's built-in `lower()`; 
+it does not provide full Unicode case folding. `%` and `_` are treated literally. 
+Unknown or repeated query parameters return `400`.
 
 Results sort by `createdAt DESC, id DESC` for deterministic ordering. `total` counts all matching tasks before pagination. Count and page are read in one database transaction. Offset pagination can shift between separate requests when data changes.
 
@@ -167,7 +176,9 @@ npm run test:problem5
 npm test
 ```
 
-Tests make actual HTTP requests to ephemeral localhost ports and use isolated SQLite databases. They cover the CRUD lifecycle, defaults and trimming, partial-update preservation, combined filters, pagination, literal search and SQL-injection-like input, invalid bodies/queries/IDs, malformed JSON, content types, oversized requests, missing resources, and configuration validation. A file-backed database test closes and reopens the application to verify that created and updated tasks remain and deleted tasks stay deleted. No developer database is touched.
+Tests make actual HTTP requests to ephemeral localhost ports and use isolated SQLite databases. 
+They cover the CRUD lifecycle, defaults and trimming, partial-update preservation, combined filters, pagination, literal search and SQL-injection-like input, invalid bodies/queries/IDs, malformed JSON, content types, oversized requests, missing resources, and configuration validation. 
+
 
 ## Design and tradeoffs
 
@@ -177,8 +188,10 @@ Tests make actual HTTP requests to ephemeral localhost ports and use isolated SQ
 - [config.ts](config.ts) and [server.ts](server.ts): Configuration, startup, and graceful shutdown.
 - [types.ts](types.ts): Shared task types.
 
-SQLite uses WAL mode and a five-second lock timeout. Data survives restarts at the same `DB_PATH`. Back up the database using SQLite-aware tooling, or stop the server before copying the file so WAL contents are included. There is no schema migration framework for this initial single-table schema.
+SQLite uses WAL mode and a five-second lock timeout. 
+Data survives restarts at the same `DB_PATH`. 
+Back up the database using SQLite-aware tooling, or stop the server before copying the file so WAL contents are included. 
+There is no schema migration framework for this initial single-table schema.
 
 Database calls are synchronous and can block the Node event loop. This keeps a small take-home service simple; a high-throughput service would use workers or a separate database with an asynchronous driver. Substring search and total counts can scan many rows; large offsets also become slower. The native SQLite API may emit an experimental warning on some Node 24 versions.
 
-API references: [Express 5](https://expressjs.com/en/5x/api/), [Node SQLite](https://nodejs.org/api/sqlite.html).
