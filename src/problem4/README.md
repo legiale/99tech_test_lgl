@@ -16,7 +16,7 @@ Output: the sum of integers from 1 through `n`. For example, `sum_to_n(5) === 1 
 
 ## Assumptions
 
-- For `n <= 0`, return `0`: there are no positive integers from 1 through `n`. The prompt does not specify negative-input behavior.
+- For `n <= 0`, return `0`: there are no positive integers from 1 through `n`.
 - Inputs are integers as specified. Non-integer and non-finite values throw `RangeError` as a defensive check.
 - The supplied safe-result guarantee is trusted. Inputs whose sums exceed that bound are outside the contract.
 
@@ -30,9 +30,13 @@ The implementations are exported from [solution.ts](solution.ts).
 | `sum_to_n_b` | Arithmetic-series formula | O(1) | O(1) |
 | `sum_to_n_c` | Recursively halve n | O(log n) | O(log n) |
 
-The loop is straightforward but does one addition per integer. The formula is the most efficient choice. It divides the even factor before multiplying so that the intermediate product also stays within the safe-integer range.
+The loop is straightforward but does one addition per integer. 
+The formula is the most efficient choice. It divides the even factor before multiplying so that the intermediate product also stays within the safe-integer range.
 
-The recursive version uses the identity `S(2k) = 2*S(k) + k*k`, since the upper half of `1..2k` is `1..k` shifted by `k`. For odd `n = 2k + 1`, it adds the remaining term `n`. A single recursive call per level halves the input, avoiding the linear stack depth of recursing on `n - 1`. All intermediate integer values stay at or below the final positive sum.
+The recursive version uses the identity `S(2k) = 2*S(k) + k*k`, since the upper half of `1..2k` is `1..k` shifted by `k`. 
+For odd `n = 2k + 1`, it adds the remaining term `n`. 
+A single recursive call per level halves the input, avoiding the linear stack depth of recursing on `n - 1`. 
+All intermediate integer values stay at or below the final positive sum.
 
 ## Setup
 
@@ -72,4 +76,6 @@ Tests cover the example, zero, negative integers, odd and even inputs, invalid i
 
 Complexities assume constant-time operations on JavaScript numbers. For `n <= 0`, all three implementations take O(1) time and space.
 
-The loop becomes slower for large inputs. The halving version uses stack space; under the safe-result constraint, it needs at most 28 simultaneous calls. The arithmetic formula has constant time and space and is the recommended implementation when only one is needed.
+The loop becomes slower for large inputs. 
+The halving version uses stack space; under the safe-result constraint, it needs at most 28 simultaneous calls. 
+The arithmetic formula has constant time and space and is the recommended implementation when only one is needed.
